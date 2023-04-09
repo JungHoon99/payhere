@@ -2,6 +2,7 @@
 import jwt
 import time
 import hashlib
+import re
 
 from database import engineconn
 from models import User
@@ -17,6 +18,10 @@ app = FastAPI()
 
 @app.post("/signup")
 def signUp(sign : SignUp):
+  p = re.compile('^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+  if(p.match(sign.email) == None):
+    return {"isSuccess" : False , "message" : "wrong email"}
+  
   pwByte = sign.pw.encode('utf-8')
   hashed_password = hashlib.sha256(pwByte).hexdigest()
   user = User()
