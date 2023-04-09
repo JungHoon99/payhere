@@ -30,6 +30,11 @@ class Account(Base):
     register_at = Column(DateTime(timezone=True), server_default=func.now())
     update_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
 
+class BlackList(Base):
+    __tablename__ = "black_list"
+
+    token = Column(String(200), nullable=False, primary_key=True)
+    end_at = Column(DateTime, nullable=False, primary_key=True)
 
 if __name__ == '__main__':
     
