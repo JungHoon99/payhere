@@ -5,7 +5,8 @@ import hashlib
 
 from database import engineconn
 from models import User
-
+from baseModels import SignUp
+from sqlalchemy.exc import IntegrityError
 
 SECRET_KEY = "mysecretkey"
 
@@ -14,15 +15,18 @@ session = engine.sessionmaker()
 app = FastAPI()
 
 
-@app.get("/")
-def 이름():
-  return '보낼 값'
+@app.post("/signup")
+def signUp(sign : SignUp):
+  pwByte = sign.pw.encode('utf-8')
+  hashed_password = hashlib.sha256(pwByte).hexdigest()
+  user = User()
+  user.email = sign.email
+  user.pw = hashed_password
 
-@app.get("/test")
-async def first_get():
-    example = session.query(User).all()
-    return example
+  try:
+    session.add(user)
+    session.commit()
+  except IntegrityError as e:
+     return {"isSuccess" : False , "message" : "duplicated"}
 
-@app.get("/secondpage")
-def 야옹():
-  return {'고양이' : '야옹'}
+  return {"isSuccess" : True , "message" : "SignUp success"}
