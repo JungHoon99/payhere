@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 SECRET_KEY = "mysecretkey"
 BLACK_LIST = []
+URL = "http://127.0.0.1:8000"
 
 engine = engineconn()
 session = engine.sessionmaker()
@@ -50,7 +51,11 @@ def signIn(sign : SignInfor):
   if(id == None):
     return {"isSuccess" : False, "message" : "id or pw error"}
   
-  payload = {"id" : id.id, "email" : id.email, "exp" : int(time.time()) + (60*60)}
+  payload = {
+    "id" : id.id,
+    "email" : id.email,
+    "exp" : int(time.time()) + (60*60)
+  }
 
   userJwt = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
@@ -103,7 +108,7 @@ def accountApply(token, accountInfo : AccountInfor):
 
   return {"isSuccess" : True, "message" : "Apply success"}
 
-@app.get("/account/List/all/{token}")
+@app.get("/account/all/{token}")
 def accountList(token):
   if(findBlackList(token) or not tokenEffectCheck(token)):
     return {"isSuccess" : False, "message" : "sign out token"}
@@ -114,16 +119,67 @@ def accountList(token):
 
   requestData = {}
   for column in data:
-    requestData[column.id] = {"memo" : column.memo, "price" : column.price, "date" : column.date }
+    requestData[column.id] = {
+      "memo" : column.memo,
+      "price" : column.price,
+      "date" : column.date
+    }
 
   return requestData
 
-@app.put("/account/{id}/table/{tableName}/value/{value}/{token}")
-def accountUpdate(id, tableName, value, token):
+@app.get("/account/{accountID}/{token}")
+def accountView(accountID, token):
+  message = UserAccountEffectCheck(token, accountID)
+
+  if(message['isSuccess'] == False):
+    return message
+  
+  account = message["message"]
+
+  return account
+
+@app.post("/account/copy/{accountID}/{token}")
+def accountCopy(accountID, token):
   if(findBlackList(token) or not tokenEffectCheck(token)):
     return {"isSuccess" : False, "message" : "sign out token"}
   
-  account = session.query(Account).filter(Account.user_id == id).first()
+  account = session.query(Account).filter(Account.id == accountID).first()
+  payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+  
+  accountCopy = Account()
+  accountCopy.user_id = payload["id"]
+  accountCopy.price = account.price
+  accountCopy.memo = account.memo
+  accountCopy.date = account.date
+
+  session.add(accountCopy)
+  session.commit()
+  
+  return {"isSuccess" : True, "message" : "Copy success"}
+
+
+@app.delete("/account/{accountID}/{token}")
+def accountUpdate(accountID, token):
+  message = UserAccountEffectCheck(token, accountID)
+
+  if(message['isSuccess'] == False):
+    return message
+  
+  account = message["message"]
+
+  session.delete(account)
+  session.commit()
+
+  return {"isSuccess" : True, "message" : "delete complite"}
+
+@app.put("/account/{accountID}/table/{tableName}/value/{value}/{token}")
+def accountUpdate(accountID, tableName, value, token):
+  message = UserAccountEffectCheck(token, accountID)
+
+  if(message['isSuccess'] == False):
+    return message
+  
+  account = message["message"]
 
   if tableName == "date":
     account.date = str(value)
@@ -136,21 +192,56 @@ def accountUpdate(id, tableName, value, token):
 
   return {"isSuccess" : True, "message" : "Update Success"}
 
-@app.delete("/account/{id}/{token}")
-def accountUpdate(id, token):
+@app.get("/account/make/link/{accountID}/{token}")
+def accountMake(accountID, token):
+  if(findBlackList(token) or not tokenEffectCheck(token)):
+    return {"isSuccess" : False, "message" : "sign out token"}
+  message = UserAccountEffectCheck(token, accountID)
+
+  if(message['isSuccess'] == False):
+    return message
+  
+  account = message["message"]
+  
+  payload = {
+    "id" : account.id,
+    "user_id" : account.user_id,
+    "price" : account.price,
+    "memo" : account.memo,
+    "date" : account.date,
+    "create_at" : str(account.register_at),
+    "update_at" : str(account.update_at),
+    "exp" : int(time.time()) + (60*60*2)
+  }
+
+  accountJwt = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+  link = URL+"/account/share/link/"+accountJwt
+
+  return {"isSuccess" : True, "url" : link}
+
+@app.get("/account/share/link/{token}")
+def accountView(token):
+  if(findBlackList(token) or not tokenEffectCheck(token)):
+    return {"isSuccess" : False, "message" : "sign out token"}
+  
+  payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+
+  return payload
+
+
+def UserAccountEffectCheck(token, accountID):
   if(findBlackList(token) or not tokenEffectCheck(token)):
     return {"isSuccess" : False, "message" : "sign out token"}
   
   payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
   
-  account = session.query(Account).filter(Account.user_id == id).first()
+  account = session.query(Account).filter(Account.id == accountID).first()
+  
   if(account.user_id != payload["id"]):
     return {"isSuccess" : False, "message" : "access denied"}
-
-  session.delete(account)
-  session.commit()
-
-  return {"isSuccess" : True, "message" : "delete complite"}
+  
+  return {"isSuccess" : True, "message" : account}
 
 def tokenEffectCheck(token):
   try:
