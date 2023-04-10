@@ -15,7 +15,7 @@
     - 회원가입 완료 `{"isSuccess" : True, "message" : "SignUp success"}` 반환
     - 회원가입 실패 `{"isSuccess" : False, "message" : "실패이유" }` 반환
 
-## **/signup**
+## **/signin**
 - 로그인 기능
 
     `request body` 형식
