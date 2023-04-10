@@ -59,7 +59,7 @@ def signIn(sign : SignInfor):
 
   userJwt = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-  return { "token" : userJwt}
+  return {"isSuccess" : True ,"token" : userJwt}
 
 @app.delete("/signout/{token}")
 def signOut(token):
@@ -79,34 +79,6 @@ def signOut(token):
   session.commit()
 
   return {"isSuccess" : True, "message" : "Sign Out success"}
-
-@app.get("/Token/Infor/{token}")
-def getUser(token):
-  if(findBlackList(token) or not tokenEffectCheck(token)):
-    return {"isSuccess" : False, "message" : "sign out token"}
-  return jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-
-@app.post("/account/{token}")
-def accountApply(token, accountInfo : AccountInfor):
-  if(findBlackList(token) or not tokenEffectCheck(token)):
-    return {"isSuccess" : False, "message" : "sign out token"}
-  try:
-    datetime.strptime(accountInfo.date,"%Y-%m-%d")
-  except ValueError:
-    return {"isSuccess" : False, "message" : "date error"}
-  
-  payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-  account = Account()
-
-  account.user_id = payload["id"]
-  account.price = accountInfo.price
-  account.memo = accountInfo.memo
-  account.date = accountInfo.date
-
-  session.add(account)
-  session.commit()
-
-  return {"isSuccess" : True, "message" : "Apply success"}
 
 @app.get("/account/all/{token}")
 def accountList(token):
@@ -138,6 +110,28 @@ def accountView(accountID, token):
 
   return account
 
+@app.post("/account/{token}")
+def accountApply(token, accountInfo : AccountInfor):
+  if(findBlackList(token) or not tokenEffectCheck(token)):
+    return {"isSuccess" : False, "message" : "sign out token"}
+  try:
+    datetime.strptime(accountInfo.date,"%Y-%m-%d")
+  except ValueError:
+    return {"isSuccess" : False, "message" : "date error"}
+  
+  payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+  account = Account()
+
+  account.user_id = payload["id"]
+  account.price = accountInfo.price
+  account.memo = accountInfo.memo
+  account.date = accountInfo.date
+
+  session.add(account)
+  session.commit()
+
+  return {"isSuccess" : True, "message" : "Apply success"}
+
 @app.post("/account/copy/{accountID}/{token}")
 def accountCopy(accountID, token):
   if(findBlackList(token) or not tokenEffectCheck(token)):
@@ -156,21 +150,6 @@ def accountCopy(accountID, token):
   session.commit()
   
   return {"isSuccess" : True, "message" : "Copy success"}
-
-
-@app.delete("/account/{accountID}/{token}")
-def accountUpdate(accountID, token):
-  message = UserAccountEffectCheck(token, accountID)
-
-  if(message['isSuccess'] == False):
-    return message
-  
-  account = message["message"]
-
-  session.delete(account)
-  session.commit()
-
-  return {"isSuccess" : True, "message" : "delete complite"}
 
 @app.put("/account/{accountID}/table/{tableName}/value/{value}/{token}")
 def accountUpdate(accountID, tableName, value, token):
@@ -191,6 +170,20 @@ def accountUpdate(accountID, tableName, value, token):
   session.commit()
 
   return {"isSuccess" : True, "message" : "Update Success"}
+
+@app.delete("/account/{accountID}/{token}")
+def accountUpdate(accountID, token):
+  message = UserAccountEffectCheck(token, accountID)
+
+  if(message['isSuccess'] == False):
+    return message
+  
+  account = message["message"]
+
+  session.delete(account)
+  session.commit()
+
+  return {"isSuccess" : True, "message" : "delete success"}
 
 @app.get("/account/make/link/{accountID}/{token}")
 def accountMake(accountID, token):
@@ -226,6 +219,9 @@ def accountView(token):
     return {"isSuccess" : False, "message" : "sign out token"}
   
   payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+
+  payload.pop("user_id")
+  payload.pop("exp")
 
   return payload
 

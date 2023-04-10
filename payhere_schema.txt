@@ -1,0 +1,33 @@
+create database payhere;
+
+use payhere;
+
+CREATE TABLE user (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        email VARCHAR(50) NOT NULL,
+        pw VARCHAR(70) NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE (email)
+);
+
+
+
+CREATE TABLE account (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        user_id BIGINT NOT NULL,
+        price INTEGER,
+        memo VARCHAR(200),
+        date VARCHAR(10),
+        register_at DATETIME DEFAULT now(),
+        update_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        FOREIGN KEY(user_id) REFERENCES user (id)
+);
+
+
+
+CREATE TABLE black_list (
+        token VARCHAR(200) NOT NULL,
+        end_at DATETIME NOT NULL,
+        PRIMARY KEY (token, end_at)
+);
